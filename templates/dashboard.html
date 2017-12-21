@@ -1,0 +1,33 @@
+<!doctype html>
+<title>SmashEisti</title>
+
+<h1>Welcome to SmashEisti Ladder Board</h1>
+
+<table>
+    {% for player in players %}
+        <tr><td>{{player.rank}}</td><td>{{player.name}}</td><td>{{player.elo}}</td></tr>
+    {% endfor %}
+</table>
+
+<form action="/action_page.php" method="get">
+    Joueurs :
+    <input list="player1" name="player1">
+    <datalist id="player1">
+        {% for player in players %}
+            <option value={{player.name}}>
+        {% endfor %}
+    </datalist>
+    <input list="player2" name="player2">
+    <datalist id="player2">
+        {% for player in players %}
+            <option value={{player.name}}>
+        {% endfor %}
+    </datalist>
+    <br>
+    Score :
+    <input type="score1" name="score1" min="0">
+    <input type="score2" name="score1" min="0">
+    <br>
+
+    <input type="submit">
+</form>
