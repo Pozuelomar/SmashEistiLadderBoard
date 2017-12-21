@@ -1,0 +1,6 @@
+body            { font-family: sans-serif; background: #eee; text-align: center; }
+div             { padding: 10px}
+a, h1, h2       { color: #377ba8; }
+h1              { font-family: 'Georgia', serif; margin: 0; border-bottom: 2px solid #eee; }
+table, th, td   { border: 1px solid black; }
+footer          { position:absolute; bottom:0; width:99%; height:100px; }

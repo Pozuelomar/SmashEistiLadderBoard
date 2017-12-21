@@ -1,11 +1,14 @@
 # Installation - pip3 install Flask
 
-from flask import Flask, session, redirect, url_for, escape, request
+from flask import Flask, request, session
 from flask import render_template
 
 from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Float, Boolean, select
 
+import hashlib
+
 app = Flask(__name__)
+app.config.from_pyfile('config.cfg')
 
 # Base de données (e.g. SQLite)
 # SQL Alchemy - http://www.sqlalchemy.org/
@@ -17,11 +20,18 @@ metadata = MetaData(bind=db)
 users = Table('users', metadata,
               Column('name', String(30), primary_key=True),
               Column('email', String(50)),
-              Column('password', String, default=''),
-              Column('admin', Boolean),
+              Column('password', String),
+              Column('admin', Boolean, default=False),
               Column('elo', Float, default=1200),
               Column('nbGame', Integer, default=0),
               )
+
+
+salt = '00eb8b6ceaae4d49ba7444344ecbee2e'
+
+
+def hash(password):
+    return hashlib.sha512(password.encode('utf-8') + salt.encode('utf-8')).hexdigest()
 
 
 def create_user(**kwargs):
@@ -40,6 +50,20 @@ def new_elo(player1, player2, score1, score2):
 
 
 def do_match(player1, player2, score1, score2):
+    if player1 == player2:
+        return
+    player1 = select(
+        [users.c.name, users.c.elo, users.c.nbGame]
+    ).where(
+        users.c.name == player1
+    ).execute().first()
+
+    player2 = select(
+        [users.c.name, users.c.elo, users.c.nbGame]
+    ).where(
+        users.c.name == player2
+    ).execute().first()
+
     elo1 = new_elo(player1, player2, score1, score2)
     elo2 = new_elo(player2, player1, score2, score1)
 
@@ -52,11 +76,24 @@ def do_match(player1, player2, score1, score2):
         elo=elo2
         ).where(users.c.name == player2.name).execute()
 
-    print(elo1, elo2)
 
+@app.route('/', methods=['GET', 'POST'])
+def dashboard():
+    if request.method == 'POST':
+        if request.form['type'] == 'match':
+            do_match(
+                request.form['player1'],
+                request.form['player2'],
+                request.form['score1'],
+                request.form['score2'],
+            )
+        elif request.form['type'] == 'player':
+            create_user(
+                name=request.form['name'],
+                email=request.form['email'],
+                password=hash(request.form['password']),
+            )
 
-@app.route('/')
-def default():
     players = select([users.c.name, users.c.elo]).order_by(users.c.elo.desc()).execute()
 
     players = tuple(map(dict, players))
@@ -68,21 +105,44 @@ def default():
     return render_template('dashboard.html', players=players)
 
 
-@app.route('/hello')
-def hello():
-    return 'Hello, World'
-
-
-@app.route('/match', methods=['POST'])
-def match():
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
     if request.method == 'POST':
-        print('posted')
-        player1 = select([users.c.name, users.c.elo, users.c.nbGame]).where(users.c.name == 'Tiaosheng').execute().first()
-        player2 = select([users.c.name, users.c.elo, users.c.nbGame]).where(users.c.name == 'test0').execute().first()
-        do_match(player1, player2, 2, 0)
-        return 'done'
-    else:
-        return 'not done'
+        u = select(
+            [users.c.name, users.c.password, users.c.admin]
+        ).where(
+            users.c.name == request.form['name']
+        ).where(
+            users.c.password == hash(request.form['password']),
+        ).execute()
+        print(request.form['password'])
+        print(hash(request.form['password']))
+        print(list(select(
+            [users.c.password]
+        ).execute()))
+        try:
+            a = u.first()
+            session['name'], session['password'], session['admin'] = a
+        except Exception as e:
+            return 'Wrong username/password\n'+str(e)
+
+    try:
+        u = select(
+            [users.c.name, users.c.password, users.c.admin]
+        ).where(
+            users.c.name == session['name']
+        ).where(
+            users.c.password == session['password'],
+        ).execute()
+        try:
+            a = u.first()
+            session['name'], session['password'], session['admin'] = a
+        except Exception as e:
+            return 'Wrong username/password\n'+str(e)
+
+        return str(list(users.select().execute()))
+    except:
+        return render_template('login.html')
 
 
 @app.route('/bdd')
@@ -94,28 +154,9 @@ def bdd():
     db.execute('delete from users')
 
     # Insert de users
-    users.insert().execute(name='Tiaosheng', email='pozuelomar@eisti.eu', password='secret', elo='1200')
+    users.insert().execute(name='Tiaosheng', email='pozuelomar@eisti.eu', password=hash('secret'), admin=True)
 
-    for i in range(10):
-        create_user(name='test%s' % i, email='test%s' % i)
-
-    """
-    # Update
-
-    q = users.update().values(name='New Name'). \
-        where(users.c.age <= 40). \
-        where(users.c.name.contains('ar'))
-    db.execute(q)
-    """
-    """
-    # Select
-    x = users.select(users.c.name == 'John').execute().first()
-
-    y = db.execute('select * from users where name = :1', ['Carl']).first()
-
-    rs = users.select().execute()
-    """
-    return 'ok'
+    return 'bdd reset'
 
 
 app.run()

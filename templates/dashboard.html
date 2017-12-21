@@ -1,33 +1,63 @@
 <!doctype html>
-<title>SmashEisti</title>
+<title>Smash Eisti</title>
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+<body>
+<h1>Bienvenu sur le leaderboard Smash Eisti</h1>
 
-<h1>Welcome to SmashEisti Ladder Board</h1>
-
-<table>
-    {% for player in players %}
-        <tr><td>{{player.rank}}</td><td>{{player.name}}</td><td>{{player.elo}}</td></tr>
-    {% endfor %}
-</table>
-
-<form action="/action_page.php" method="get">
-    Joueurs :
-    <input list="player1" name="player1">
-    <datalist id="player1">
+<div>
+    <table align="center">
+        <tr><th>Rang</th><th>Pseudo</th><th>ELO</th></tr>
         {% for player in players %}
-            <option value={{player.name}}>
+            <tr>
+                <td>{{player.rank}}</td>
+                <td>{{player.name}}</td>
+                <td>{{player.elo}}</td>
+            </tr>
         {% endfor %}
-    </datalist>
-    <input list="player2" name="player2">
-    <datalist id="player2">
-        {% for player in players %}
-            <option value={{player.name}}>
-        {% endfor %}
-    </datalist>
+    </table>
+</div>
+<div>
+    <h2>Déclarer un Match</h2>
     <br>
-    Score :
-    <input type="score1" name="score1" min="0">
-    <input type="score2" name="score1" min="0">
-    <br>
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="match">
+        Joueurs :
+        <input list="player1" name="player1" required>
+        <datalist id="player1">
+            {% for player in players %}
+                <option value={{player.name}}>
+            {% endfor %}
+        </datalist>
+        <input list="player2" name="player2" required>
+        <datalist id="player2">
+            {% for player in players %}
+                <option value={{player.name}}>
+            {% endfor %}
+        </datalist>
+        <br>
+        Score :
+        <input type="number" name="score1" min="0" required>
+        <input type="number" name="score2" min="0" required>
+        <br>
 
-    <input type="submit">
-</form>
+        <input type="submit">
+    </form>
+</div>
+
+<div>
+    <h2>Nouveau joueur</h2>
+    <br>
+    <form action="/" method="post">
+        <input type="hidden" name="type" value="player">
+        name* : <input type="text" name="name" required><br>
+        email : <input type="text" name="email"><br>
+        password : <input type="text" name="password"><br>
+        <input type="submit">
+    </form>
+</div>
+
+</body>
+
+<footer>
+    Envie d'améliorer le dashboard ? <a href="https://github.com/Pozuelomar/SmashEistiLadderBoard"> Rejoignez-nous !</a>
+</footer>
