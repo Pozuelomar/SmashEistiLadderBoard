@@ -1,0 +1,54 @@
+<!doctype html>
+<title>Smash Eisti</title>
+<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+<body>
+<h1>Admin</h1>
+
+<div>
+    <table align="center">
+        <tr>
+            {% for k in attr %}
+                <th>{{k}}</th>
+            {% endfor %}
+            <th>Submit</th>
+            <th>Delete</th>
+        </tr>
+        {% for player in players %}
+            <tr>
+                <form action="/admin" method="post">
+                    <input type="hidden" name="type" value="modify">
+
+                    {% for k in attr %}
+                        <td><input type="text" name={{k}} value={{player[k]}}></td>
+                    {% endfor %}
+                    <td><input type="submit"></td>
+
+                </form>
+                <form action="/admin" method="post">
+                    <input type="hidden" name="type" value="delete">
+                    <input type="hidden" name="name" value={{player.name}}>
+                    <td><input type="submit" value="Supprimer"></td>
+                </form>
+
+            </tr>
+        {% endfor %}
+        <tr>
+            <form action="/admin" method="post">
+                <input type="hidden" name="type" value="create">
+
+                {% for k in attr %}
+                    <td><input type="text" name={{k}} value='' {% if k=='name' %} required {% endif %} ></td>
+                {% endfor %}
+                <td><input type="submit"></td>
+
+            </form>
+        </tr>
+    </table>
+
+</div>
+
+</body>
+
+<footer>
+    Envie d'améliorer le dashboard ? <a href="https://github.com/Pozuelomar/SmashEistiLadderBoard"> Rejoignez-nous !</a>
+</footer>

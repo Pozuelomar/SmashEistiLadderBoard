@@ -2,10 +2,12 @@
 <title>Smash Eisti</title>
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
 <body>
+{{error}}
 <h1>Admin</h1>
 
 <div>
     <form action="/admin" method="post">
+        <input type="hidden" name="type" value="login">
         name : <input type="text" name="name" required><br>
         password : <input type="password" name="password"><br>
         <input type="submit">

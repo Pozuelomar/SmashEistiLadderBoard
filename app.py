@@ -19,23 +19,24 @@ metadata = MetaData(bind=db)
 # Création des tables
 users = Table('users', metadata,
               Column('name', String(30), primary_key=True),
-              Column('email', String(50)),
-              Column('password', String),
+              Column('email', String(50), default=''),
+              Column('password', String, default=''),
               Column('admin', Boolean, default=False),
               Column('elo', Float, default=1200),
               Column('nbGame', Integer, default=0),
               )
 
 
-salt = '00eb8b6ceaae4d49ba7444344ecbee2e'
-
-
 def hash(password):
-    return hashlib.sha512(password.encode('utf-8') + salt.encode('utf-8')).hexdigest()
+    return hashlib.sha512(password.encode('utf-8') + app.config['SALT'].encode('utf-8')).hexdigest()
 
 
 def create_user(**kwargs):
     return users.insert().execute(**kwargs)
+
+
+def delete_user(name):
+    return users.delete().where(users.c.name == name).execute()
 
 
 def p(D):
@@ -87,7 +88,7 @@ def dashboard():
                 request.form['score1'],
                 request.form['score2'],
             )
-        elif request.form['type'] == 'player':
+        if request.form['type'] == 'player':
             create_user(
                 name=request.form['name'],
                 email=request.form['email'],
@@ -105,26 +106,55 @@ def dashboard():
     return render_template('dashboard.html', players=players)
 
 
+def admin_page():
+    players = select([users]).order_by(users.c.elo.desc()).execute()
+    players = tuple(map(dict, players))
+    return render_template('admin.html', players=players, attr=sorted(players[0].keys()))
+
+
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
-        u = select(
-            [users.c.name, users.c.password, users.c.admin]
-        ).where(
-            users.c.name == request.form['name']
-        ).where(
-            users.c.password == hash(request.form['password']),
-        ).execute()
-        print(request.form['password'])
-        print(hash(request.form['password']))
-        print(list(select(
-            [users.c.password]
-        ).execute()))
-        try:
-            a = u.first()
-            session['name'], session['password'], session['admin'] = a
-        except Exception as e:
-            return 'Wrong username/password\n'+str(e)
+        print('post')
+        if request.form['type'] == 'login':
+            u = select(
+                [users.c.name, users.c.password, users.c.admin]
+            ).where(
+                users.c.name == request.form['name']
+            ).where(
+                users.c.password == hash(request.form['password']),
+            ).execute()
+
+        if request.form['type'] == 'modify':
+            try:
+                u = select(
+                    [users.c.name, users.c.password, users.c.admin]
+                ).execute()
+                a = u.first()
+                session['name'], session['password'], session['admin'] = a
+            except Exception as e:
+                return render_template('login.html', error=e)
+            else:
+                modif = {
+                    'name': request.form['name'],
+                    'email': request.form['email'],
+                    'password': request.form['password'],
+                    'elo': float(request.form['elo']),
+                    'nbGame': int(request.form['nbGame']),
+                    'admin': request.form['admin'] == 'True',
+                }
+                users.update().values(
+                    **modif
+                ).where(users.c.name == request.form['name']).execute()
+        if request.form['type'] == 'create':
+            new = {}
+            for k, v in request.form.items():
+                if v:
+                    new[k] = v
+            create_user(**new)
+        if request.form['type'] == 'delete':
+            print(request.form['name'])
+            delete_user(request.form['name'])
 
     try:
         u = select(
@@ -134,15 +164,16 @@ def admin():
         ).where(
             users.c.password == session['password'],
         ).execute()
+    except Exception as e:
+        return render_template('login.html', error=e)
+    else:
         try:
-            a = u.first()
-            session['name'], session['password'], session['admin'] = a
+            session['name'], session['password'], session['admin'] = u.first()
+            assert session['admin'] is True, 'User is not admin'
         except Exception as e:
-            return 'Wrong username/password\n'+str(e)
-
-        return str(list(users.select().execute()))
-    except:
-        return render_template('login.html')
+            return render_template('login.html', error=e)
+        else:
+            return admin_page()
 
 
 @app.route('/bdd')
@@ -154,7 +185,12 @@ def bdd():
     db.execute('delete from users')
 
     # Insert de users
-    users.insert().execute(name='Tiaosheng', email='pozuelomar@eisti.eu', password=hash('secret'), admin=True)
+    users.insert().execute(
+        name=app.config['ADMIN'],
+        email=app.config['ADMIN_EMAIL'],
+        password=hash(app.config['ADMIN_PASSWORD']),
+        admin=True,
+    )
 
     return 'bdd reset'
 
