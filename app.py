@@ -1,10 +1,7 @@
 # Installation - pip3 install Flask
 
-from flask import Flask, request, session
-from flask import render_template
-
+from flask import Flask, request, session, render_template
 from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, Float, Boolean, select
-
 import hashlib
 
 app = Flask(__name__)
@@ -46,6 +43,7 @@ def p(D):
 def new_elo(player1, player2, score1, score2):
     K = 40 if player1.nbGame < 30 else 20 if player1.elo < 2400 else 10
     W = 1 if score1 > score2 else 0.5 if score1 == score2 else 0
+    # W = score1/(score1+score2)
     D = player1.elo-player2.elo
     return player1.elo + K*(W-p(D))
 
@@ -124,14 +122,26 @@ def admin():
             ).where(
                 users.c.password == hash(request.form['password']),
             ).execute()
+            print(0)
+            print(0)
+            print(0)
+            try:
+                session['name'], session['password'], session['admin'] = u.first()
+            except Exception as e:
+                return render_template('login.html', error=e)
+            else:
+                pass
 
         if request.form['type'] == 'modify':
             try:
                 u = select(
                     [users.c.name, users.c.password, users.c.admin]
+                ).where(
+                    users.c.name == session['name']
+                ).where(
+                    users.c.password == session['password'],
                 ).execute()
-                a = u.first()
-                session['name'], session['password'], session['admin'] = a
+                session['name'], session['password'], session['admin'] = u.first()
             except Exception as e:
                 return render_template('login.html', error=e)
             else:
@@ -171,6 +181,9 @@ def admin():
             session['name'], session['password'], session['admin'] = u.first()
             assert session['admin'] is True, 'User is not admin'
         except Exception as e:
+            print(3)
+            print(3)
+            print(3)
             return render_template('login.html', error=e)
         else:
             return admin_page()
